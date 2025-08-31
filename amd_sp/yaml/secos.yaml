@@ -14,11 +14,11 @@ flash:
 debug: true
 input:
   flash:
-  # nothing
+    # nothing
   x86:
-  # nothing
+    # nothing
   psp:
-  # nothing
+    # nothing
   mailbox: true
   mailbox_config:
     mbox_high: 0x0
@@ -30,7 +30,7 @@ input:
 
 harness:
   # use mailbox entry point for now
-  start: 0x200e74 # 0x200b4c
+  start: 0x200b4c
   sinks:
     - 0x00200e70 # end of function
     - 0x002016ee
@@ -62,13 +62,36 @@ tunnels:
     source: 0x2a1c # what gets overwritten
     target: 0x2a2a # where to jump to
 
-  # skip syscall to not wait for event 0x19
+  # skip hanging functions entirely
+#  - addr: 0x20053c
+#    action: Jump
+#    source: 0x20056e
+#    target: 0x200572
+#  - addr: 0x200574
+#    action: SetConstant
+#    target: R0
+#    value: 0x0
+#  - addr: 0x20290a
+#    action: SetConstant
+#    target: R0
+#    value: 0x0
+#  - addr: 0x2029f8
+#    action: SetConstant
+#    target: R0
+#    value: 0x0
+#  - addr: 0x202a50
+#    action: SetConstant
+#    target: R0
+#    value: 0x0
+
+
+# skip syscall to not wait for event 0x19
   - addr: 0xe101d8
     action: PermaJump
     source: 0xe101da
     target: 0xe101dc
 
-  # set fuse to actually write service page
+# set fuse to actually write service page
   - addr: 0xd29a
     action: SetConstant
     target: R0
@@ -85,60 +108,6 @@ tunnels:
     action: PermaJump
     source: 0x200e68
     target: 0x200e6a
-
-  # set fuse again maybe, because needed for df lock
-  - addr: 0xe0a196
-    action: SetConstant
-    target: R0
-    value: 0x7
-
-  # Shorten the while true by one instruction to later set fuzzing start there
-  #- addr: 0x200e4e
-  #  action: PermaJump
-  #  source: 0x200e70
-  #  target: 0x200e62
-
-  # enable that skipped instruction after "ignore" many runs to do setup beforehand
-  #- addr: 0x200e64
-  #  action: Jump
-  #  source: 0x200e70
-  #  target: 0x200e74
-  #  ignore: 0
-
-  # set mbox_cmd
-  - addr: 0x200b4c
-    action: WriteMemory
-    target: 0x3010570
-    value: "0x00000200"
-    exec_amount: 1
-
-  # set mbox_low
-  - addr: 0x200b50
-    action: WriteMemory
-    target: 0x3010574
-    value: "0xd0000000"
-    exec_amount: 1
-
-  # set mbox_high
-  - addr: 0x200b52
-    action: WriteMemory
-    target: 0x3010578
-    value: "0x00"
-    exec_amount: 1
-
-  # set cmd memory
-  - addr: 0x200c90
-    action: WriteMemory
-    target: 0x202860
-    value: "0x100100000000000000000020000000000000f0ffffffffff0040002000000000002000000000000010100020000000000100000001000000ff000000a500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200020000000000420002000000000"
-    exec_amount: 1
-
-  # set cmd pointer
-  - addr: 0x200c92
-    action: SetConstant
-    target: R0
-    value: 0x202860
-    exec_amount: 1
 
   # Debug error state
   - addr: 0xa9a4
@@ -159,10 +128,11 @@ tunnels:
     target: 0x3010570
     size: 4
 
+
 #TODO: fix that if breakpoint is within code executed before harness, fuzzer will break
 crashes:
   breakpoints:
-  # - 0x201b46
+    # - 0x201b46
   mmap:
     no_exec:
     ccp_memcopy_addr: 0x0
