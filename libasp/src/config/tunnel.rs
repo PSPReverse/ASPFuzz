@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use libafl_qemu::{EmulatorModules, GuestAddr, GuestReg, Hook, Qemu, Regs};
 use log;
 use serde::{
@@ -5,8 +6,43 @@ use serde::{
     Deserialize, Deserializer,
 };
 use std::fmt;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::Arc;
+use std::rc::Rc;
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct TunnelTrigger{
+    hits: Cell<u32>,
+    delay: u32,
+    firing_amount: u32,
+}
+impl TunnelTrigger {
+    pub fn new(delay: u32, firing_amount: u32) -> Self {
+        Self {
+            hits: Cell::new(0),
+            delay,
+            firing_amount,
+        }
+    }
+    pub fn increment_hits(&self) {
+        self.hits.set(self.hits.get() + 1);
+    }
+    pub fn should_trigger(&self) -> bool {
+        // before delay is up
+        if self.hits.get() < self.delay {
+            return false;
+        }
+        // use 0 as infinity
+        if self.firing_amount == 0 {
+            return true;
+        }
+        // false again after firing_amount is up
+        if self.hits.get() > self.delay + self.firing_amount {
+            return false;
+        }
+        true
+    }
+}
+
+
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(tag = "action")]
@@ -21,11 +57,14 @@ pub enum CmpAction {
         #[serde(deserialize_with = "parse_regs")]
         target: Regs,
         value: GuestReg,
+        delay: Option<u32>,
+        exec_amount: Option<u32>,
     },
     Jump {
         source: GuestAddr,
         target: GuestAddr,
-        ignore: Option<u32>,
+        delay: Option<u32>,
+        exec_amount: Option<u32>,
     },
     PermaJump {
         source: GuestAddr,
@@ -37,7 +76,9 @@ pub enum CmpAction {
     },
     WriteMemory {
         target: GuestAddr,
-        value: Vec<u8>,
+        value: String,
+        delay: Option<u32>,
+        exec_amount: Option<u32>,
     },
     LogMemory {
         target: GuestAddr,
@@ -70,16 +111,25 @@ impl TunnelConfig {
         } in self.actions.clone()
         {
             match action {
-                CmpAction::SetConstant { target, value } => emu_modules.instructions(
+                CmpAction::SetConstant { target, value , delay, exec_amount} => {
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
+                    emu_modules.instructions(
                     addr,
-                    Hook::Closure(Box::new(
+                    Hook::Closure(Box::new({
+                        let trigger_info = Rc::clone(&trigger_info);
                         move |qemu: Qemu, _hks: &mut EmulatorModules<ET, I, S>, _state, _pc| {
+                            trigger_info.increment_hits();
+                            if !trigger_info.should_trigger() {
+                                log::debug!("Tunnel - Constant [{addr:#x}, {target:?}, {value:#x}] skipping");
+                                return;
+                            }
+
                             log::debug!("Tunnel - Constant [{addr:#x}, {target:?}, {value:#x}]");
                             qemu.write_reg(target, value).unwrap();
-                        },
-                    )),
-                    false,
-                ),
+                        }
+                    })),
+                    true,
+                )},
                 CmpAction::CopyRegister { target, source } => emu_modules.instructions(
                     addr,
                     Hook::Closure(Box::new(
@@ -95,31 +145,26 @@ impl TunnelConfig {
                 CmpAction::Jump {
                     source,
                     target,
-                    ignore,
+                    delay,
+                    exec_amount,
                 } => {
-                    let skip = ignore.unwrap_or(0);
-                    let counter = Arc::new(AtomicU32::new(0));
-                    let fired = Arc::new(AtomicBool::new(false));
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
                     emu_modules.instructions(
                         addr,
                         Hook::Closure(Box::new({
-                            let counter = Arc::clone(&counter);
-                            let fired = Arc::clone(&fired);
+                            let trigger_info = Rc::clone(&trigger_info);
                             move |qemu: Qemu, _hks: &mut EmulatorModules<ET, I, S>, _state, _pc| {
-                                let prev = counter.fetch_add(1, Ordering::SeqCst);
-                                if prev < skip {
-                                    log::info!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}] on skip {prev:#x} of {skip:#x}");
+                                trigger_info.increment_hits();
+                                if !trigger_info.should_trigger() {
+                                    log::debug!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}] skipping");
                                     return;
                                 }
-                                if fired.swap(true, Ordering::SeqCst) {
-                                    return;
-                                }
-                                log::info!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}] triggering");
+
+                                log::debug!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}] triggering");
                                 let inst: [u8; 2] = generate_branch_call(source, target);
                                 // Patch the instruction by overwriting it
                                 qemu.write_mem(source, &inst)
                                     .expect("Overwriting instruction failed");
-
                                 qemu.flush_jit();
                             }
                         })),
@@ -130,7 +175,7 @@ impl TunnelConfig {
                     addr,
                     Hook::Closure(Box::new(
                         move |qemu: Qemu, _hks: &mut EmulatorModules<ET, I, S>, _state, _pc| {
-                            log::info!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}]");
+                            log::debug!("Tunnel - Jump [{addr:#x},{source:#x}, {target:#x}]");
                             let inst: [u8; 2] = generate_branch_call(source, target);
                             // Patch the instruction by overwriting it
                             qemu.write_mem(source, &inst)
@@ -154,19 +199,37 @@ impl TunnelConfig {
                 CmpAction::WriteMemory {
                     target: memory_addr,
                     value,
-                } => emu_modules.instructions(
+                    delay,
+                    exec_amount,
+                } => {
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
+                    emu_modules.instructions(
                     addr,
-                    Hook::Closure(Box::new(
+                    Hook::Closure(Box::new({
+                        let trigger_info = Rc::clone(&trigger_info);
                         move |qemu: Qemu, _hks: &mut EmulatorModules<ET, I, S>, _state, _pc| {
-                            log::debug!(
-                                "Tunnel - WriteMem [{addr:#x}, {memory_addr:#x}, {value:?}]"
-                            );
-                            qemu.write_mem(memory_addr, &value)
-                                .expect("WriteMem failed");
-                        },
-                    )),
-                    false,
-                ),
+                            trigger_info.increment_hits();
+                            if !trigger_info.should_trigger() {
+                                log::debug!("Tunnel - WriteMem [{addr:#x}, {memory_addr:#x}] skipping");
+                                return;
+                            }
+
+                            let trimmed = value.trim_start_matches("0x");
+                            let result = hex::decode(trimmed);
+                            match result {
+                                Ok(bytes) => {
+                                    qemu.write_mem(memory_addr, &*bytes)
+                                        .expect("WriteMem failed");
+                                    log::debug!(
+                                "Tunnel - WriteMem [{addr:#x}, {memory_addr:#x}, {bytes:?}]"
+                                );
+                                },
+                                Err(e) => log::error!("{:?}", e),
+                            }
+                        }
+                    })),
+                    true,
+                )},
                 CmpAction::LogMemory {
                     target: memory_addr,
                     size,
