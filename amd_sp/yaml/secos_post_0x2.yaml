@@ -25,7 +25,8 @@ input:
     mbox_low: 0x00000000
     size: 272
   initial_inputs:
-    - /home/maximilian/Documents/uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
+    - /run/media/maximilian/DataSSD/Uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
+  # - /home/maximilian/Documents/uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
   # - /root/PSPFuzzer/ASPFuzz/amd_sp/runs/sample_inputs
 
 harness:
@@ -123,7 +124,7 @@ tunnels:
   - addr: 0x200b52
     action: WriteMemory
     target: 0x3010578
-    value: "0x00"
+    value: "0x00000000"
     exec_amount: 1
 
   # set cmd memory
