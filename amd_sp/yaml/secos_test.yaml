@@ -14,11 +14,11 @@ flash:
 debug: true
 input:
   flash:
-    # nothing
+  # nothing
   x86:
-    # nothing
+  # nothing
   psp:
-    # nothing
+  # nothing
   mailbox: true
   mailbox_config:
     mbox_high: 0x0
@@ -63,36 +63,13 @@ tunnels:
     source: 0x2a1c # what gets overwritten
     target: 0x2a2a # where to jump to
 
-  # skip hanging functions entirely
-#  - addr: 0x20053c
-#    action: Jump
-#    source: 0x20056e
-#    target: 0x200572
-#  - addr: 0x200574
-#    action: SetConstant
-#    target: R0
-#    value: 0x0
-#  - addr: 0x20290a
-#    action: SetConstant
-#    target: R0
-#    value: 0x0
-#  - addr: 0x2029f8
-#    action: SetConstant
-#    target: R0
-#    value: 0x0
-#  - addr: 0x202a50
-#    action: SetConstant
-#    target: R0
-#    value: 0x0
-
-
-# skip syscall to not wait for event 0x19
+  # skip syscall to not wait for event 0x19
   - addr: 0xe101d8
     action: PermaJump
     source: 0xe101da
     target: 0xe101dc
 
-# set fuse to actually write service page
+  # set fuse to actually write service page
   - addr: 0xd29a
     action: SetConstant
     target: R0
@@ -109,6 +86,42 @@ tunnels:
     action: PermaJump
     source: 0x200e68
     target: 0x200e6a
+
+
+  # set mbox_cmd
+  - addr: 0x200b4c
+    action: WriteMemory
+    target: 0x3010570
+    value: "0x00001e00"
+    exec_amount: 1
+
+  # set mbox_low
+  - addr: 0x200b50
+    action: WriteMemory
+    target: 0x3010574
+    value: "0x00000000"
+    exec_amount: 1
+
+  # set mbox_high
+  - addr: 0x200b52
+    action: WriteMemory
+    target: 0x3010578
+    value: "0xf0ff0000"
+    exec_amount: 1
+
+  # set cmd memory
+  - addr: 0x201b8c
+    action: WriteMemory
+    target: 0x202860
+    value: "0x1001000000000000000000040000000000000001"
+    exec_amount: 1
+
+  # set cmd pointer
+  - addr: 0x201b8e
+    action: SetConstant
+    target: R0
+    value: 0x202860
+    exec_amount: 1
 
   # Debug error state
   - addr: 0xa9a4
@@ -133,7 +146,7 @@ tunnels:
 #TODO: fix that if breakpoint is within code executed before harness, fuzzer will break
 crashes:
   breakpoints:
-    # - 0x201b46
+  # - 0x201b46
   mmap:
     no_exec:
     ccp_memcopy_addr: 0x0
