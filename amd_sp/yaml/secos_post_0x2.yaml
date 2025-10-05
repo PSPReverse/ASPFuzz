@@ -16,7 +16,10 @@ input:
   flash:
   # nothing
   x86:
-  # nothing
+    input:
+      # smm flag register
+      - addr: 0x20002004
+        size: 0x4
   psp:
   # nothing
   mailbox: true
@@ -26,7 +29,7 @@ input:
     size: 272
   initial_inputs:
     - /run/media/maximilian/DataSSD/Uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
-  # - /home/maximilian/Documents/uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
+    - /home/maximilian/Documents/uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
   # - /root/PSPFuzzer/ASPFuzz/amd_sp/runs/sample_inputs
 
 harness:
