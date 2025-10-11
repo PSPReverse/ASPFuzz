@@ -20,12 +20,15 @@ input:
       # smm flag register
       - addr: 0x20002004
         size: 0x4
+      # kvm info space
+      - addr: 0x4500000
+        size: 0x800
   psp:
   # nothing
   mailbox: true
   mailbox_config:
     mbox_high: 0x0
-    mbox_low: 0x00000000
+    mbox_low: 0x01000000
     size: 272
   initial_inputs:
     - /run/media/maximilian/DataSSD/Uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
