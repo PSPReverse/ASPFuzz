@@ -52,7 +52,37 @@ pub type MyState =
     StdState<CachedOnDiskCorpus<BytesInput>, BytesInput, RomuDuoJrRand, OnDiskCorpus<BytesInput>>;
 
 pub fn fuzz() -> Result<(), Error> {
-    env_logger::init();
+    //env_logger::init();
+
+
+
+    fn init_logger() {
+        use env_logger::{Builder, Env};
+        use std::io::Write;
+
+
+        let env = Env::default();
+
+        Builder::from_env(env)
+            .format(|buf, record| {
+                // We are reusing `anstyle` but there are `anstyle-*` crates to adapt it to your
+                // preferred styling crate.
+                let warn_style = buf.default_level_style(log::Level::Warn);
+                let timestamp = buf.timestamp();
+                let threadid =
+                    process::id();
+
+                writeln!(
+                    buf,
+                    "thid({threadid:?}) ({timestamp}): {warn_style}{}{warn_style:#}",
+                    record.args()
+                )
+            })
+            .init();
+    }
+
+    init_logger();
+
     let args = Box::new(parse_args());
     let conf = get_run_conf().ok_or(Error::empty_optional("No run configuration found"))?;
 

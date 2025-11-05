@@ -98,7 +98,7 @@ pub fn parse_args() -> Vec<String> {
     let mut qemu_args: String = env::args().next().unwrap();
     log::debug!("QEMU arguments: {qemu_args:?}");
     if conf.debug {
-        qemu_args += " -d trace:ccp_*,trace:psp_*,guest_errors,unimp";
+        qemu_args += " -d trace:ccp_*,trace:psp_*,guest_errors,unimp,trace:psp_x86_misc_write";
         qemu_args += &format![" -D {}/logs/qemu.log", run_dir.display()];
         if num_cores == 0 {
             qemu_args += " -chardev socket,id=mon0,host=127.0.0.1,port=4444,server=on,wait=off -monitor chardev:mon0";

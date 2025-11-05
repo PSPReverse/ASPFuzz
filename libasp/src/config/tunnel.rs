@@ -26,16 +26,21 @@ impl TunnelTrigger {
         self.hits.set(self.hits.get() + 1);
     }
     pub fn should_trigger(&self) -> bool {
+        let delay = self.delay;
+        let hits = self.hits.get();
+        let firing_amount = self.firing_amount;
         // before delay is up
-        if self.hits.get() < self.delay {
+        if hits < delay {
+            log::debug!("should not trigger, hits is {hits:?}, delay is {delay:?}, firing_amount is {firing_amount:?}");
             return false;
         }
         // use 0 as infinity
-        if self.firing_amount == 0 {
+        if firing_amount == 0 {
             return true;
         }
         // false again after firing_amount is up
-        if self.hits.get() > self.delay + self.firing_amount {
+        if hits >= delay + firing_amount {
+            log::debug!("should not trigger, hits is {hits:?}, delay is {delay:?}, firing_amount is {firing_amount:?}");
             return false;
         }
         true
@@ -112,7 +117,7 @@ impl TunnelConfig {
         {
             match action {
                 CmpAction::SetConstant { target, value , delay, exec_amount} => {
-                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(1), exec_amount.unwrap_or(0)));
                     emu_modules.instructions(
                     addr,
                     Hook::Closure(Box::new({
@@ -148,7 +153,7 @@ impl TunnelConfig {
                     delay,
                     exec_amount,
                 } => {
-                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(1), exec_amount.unwrap_or(0)));
                     emu_modules.instructions(
                         addr,
                         Hook::Closure(Box::new({
@@ -202,12 +207,14 @@ impl TunnelConfig {
                     delay,
                     exec_amount,
                 } => {
-                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(0), exec_amount.unwrap_or(0)));
+                    let trigger_info = Rc::new(TunnelTrigger::new(delay.unwrap_or(1), exec_amount.unwrap_or(0)));
                     emu_modules.instructions(
                     addr,
                     Hook::Closure(Box::new({
                         let trigger_info = Rc::clone(&trigger_info);
                         move |qemu: Qemu, _hks: &mut EmulatorModules<ET, I, S>, _state, _pc| {
+                            let hits = trigger_info.hits.get();
+                            log::debug!("incrementing hits to {hits:?}");
                             trigger_info.increment_hits();
                             if !trigger_info.should_trigger() {
                                 log::debug!("Tunnel - WriteMem [{addr:#x}, {memory_addr:#x}] skipping");
@@ -256,8 +263,10 @@ impl TunnelConfig {
 // TODO handle more encodings this is just the simplest encoding
 
 /// This generates the ARM branch call instruction
+// TODO: Jump or branch call?
 fn generate_branch_call(cur_pc: u32, target: u32) -> [u8; 2] {
     let diff = i32::try_from(target).unwrap() - i32::try_from(cur_pc + 4).unwrap();
+    // TODO: diff == 0 --> nop?
     let diff = i16::try_from(diff).unwrap();
     assert!((-2048..=2046).contains(&diff));
     assert!(diff % 2 == 0);
