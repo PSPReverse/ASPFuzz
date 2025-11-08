@@ -99,9 +99,12 @@ tunnels:
     target: R0
     value: 0x7
 
-
-
-
+  # imitate sleep signal given from somewhere externally
+  #TODO: do this in smn-misc.c, but address to load from seems to be dynamic
+  - addr: 0x3438
+    action: SetConstant
+    target: R0
+    value: 0xc00
 
   #- addr: 0x200e64
   #  action: Jump
