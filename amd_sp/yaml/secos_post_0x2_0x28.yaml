@@ -21,8 +21,8 @@ input:
       - addr: 0x2000c000
         size: 0x4
       # kvm info space
-      - addr: 0x4500000
-        size: 0x800
+      # - addr: 0x4500000
+      #   size: 0x800
   psp:
   # nothing
   mailbox: true
@@ -103,24 +103,33 @@ tunnels:
 
 
 
-  #- addr: 0x200e64
-  #  action: Jump
-  #  source: 0x200e70
-  #  target: 0x200e74
-  #  delay: 2
+    # Shorten the while true by one instruction to later set fuzzing start there
+  - addr: 0x200e64
+    action: Jump
+    source: 0x200e70
+    target: 0x200e62
+    exec_amount: 1
+
+    # jump to later set fuzzing start there
+  - addr: 0x200e66
+    action: Jump
+    source: 0x200e70
+    target: 0x200e74
+    exec_amount: 1
+    delay: 2
 
   # set mbox_low
   - addr: 0x200b50
     action: WriteMemory
     target: 0x3010574
     value: "0xd0000000"
-    exec_amount: 3
+    exec_amount: 2
   # set mbox_high
   - addr: 0x200b52
     action: WriteMemory
     target: 0x3010578
     value: "0x00000000"
-    exec_amount: 3
+    exec_amount: 2
 
   # set mbox_cmd
   - addr: 0x200b4c
@@ -140,37 +149,36 @@ tunnels:
     target: R0
     value: 0x202860
     exec_amount: 1
-    
-      # Shorten the while true by one instruction to later set fuzzing start there
-  - addr: 0x200e64
-    action: Jump
-    source: 0x200e70
-    target: 0x200e62
-    exec_amount: 1
 
-      # Shorten the while true by one instruction to later set fuzzing start there
-  - addr: 0x200e66
-    action: Jump
-    source: 0x200e70
-    target: 0x200e74
-    exec_amount: 1
-    delay: 3
+
 
   # set 2nd mbox_cmd
   - addr: 0x200b56
     action: WriteMemory
     target: 0x3010570
-    value: "0x00001b00"
+    value: "0x00002800"
     exec_amount: 1
     delay: 2
 
-  # set 3rd mbox_cmd
-  - addr: 0x200b58
-    action: WriteMemory
-    target: 0x3010570
-    value: "0x00000600"
+  - addr: 0x200b76
+    action: SetConstant
+    target: R10
+    value: 0x1
     exec_amount: 1
-    delay: 3
+    delay: 2
+
+  - addr: 0x200dac
+    action: WriteMemory
+    target: 0x202860
+    value: "0x0c00000000000000000000200000000001000000"
+    exec_amount: 1
+
+  - addr: 0x200dae
+    action: SetConstant
+    target: R0
+    value: 0x202860
+    exec_amount: 1
+
 
   # Debug error state
   - addr: 0xa9a4
