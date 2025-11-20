@@ -77,8 +77,9 @@ tunnels:
     target: R0
     value: 0x0
 
+  # Jump over Syscall
   - addr: 0x200e4a
-    action: Jump
+    action: PermaJump
     source: 0x200e68
     target: 0x200e6a
 

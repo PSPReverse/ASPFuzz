@@ -1,0 +1,212 @@
+# This setup is primarily for running GDB until the DATB in the tOS
+qemu:
+  # Zen generation to emulate
+  zen: "Zen2"
+  # On-chip bootloader to use
+  on_chip_bl_path: "bins/on-chip-bl-Ryzen-Zen2-Desktop"
+# Flash informations
+flash:
+  # Size of flash memory
+  size: 0x1000000
+  # Base image in flash memory
+  base: "bins/PRIME-B450M-K-II-ASUS-4403.BIN.2nd_half"
+
+debug: true
+input:
+  flash:
+  # nothing
+  x86:
+    input:
+      # smm flag register
+      - addr: 0x2000c000
+        size: 0x4
+      # kvm info space
+      # - addr: 0x4500000
+      #   size: 0x800
+  psp:
+  # nothing
+  mailbox: true
+  mailbox_config:
+    mbox_high: 0x0
+    mbox_low: 0x10000000
+    size: 272
+  initial_inputs:
+    - /run/media/maximilian/DataSSD/Uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
+    - /home/maximilian/Documents/uni/Fuzzer/ASPFuzz/amd_sp/sample_inputs
+    - /root/PSPFuzzer/ASPFuzz/amd_sp/runs/sample_inputs
+
+harness:
+  # use mailbox entry point for now
+  start: 0x200e74 # 0x200b4c
+  sinks:
+    - 0x00200e70 # end of function
+    - 0x002016ee
+    - 0x0020172e
+    - 0x00001db2 # wfi
+
+
+
+# Tunnels describe any fixup that has to happen during execution
+# at a certain address
+# Jumps are very finicky
+# Jump to early and the TB will crash
+# Jump to late and there will be Data Aborts
+# The positions can change when upgrading QEMU
+tunnels:
+  # fix function in x86_workloop
+  - addr: 0x9236
+    action: SetConstant
+    target: R0
+    value: 0x0
+  # overwrite of 0x100ac
+  - addr: 0x6988
+    action: SetConstant
+    target: R0
+    value: 0x1
+  # SKIP ABL
+  - addr: 0x2938   # When the overwriting happens
+    action: Jump
+    source: 0x2a1c # what gets overwritten
+    target: 0x2a2a # where to jump to
+
+  # skip syscall to not wait for event 0x19
+  - addr: 0xe101d8
+    action: PermaJump
+    source: 0xe101da
+    target: 0xe101dc
+
+  # set fuse to actually write service page
+  - addr: 0xd29a
+    action: SetConstant
+    target: R0
+    value: 0x7
+
+  # set mmapfunc return to 0 instead of 0x34
+  - addr: 0x202a50
+    action: SetConstant
+    target: R0
+    value: 0x0
+
+  # Jump over Syscall
+  - addr: 0x200e4a
+    action: PermaJump
+    source: 0x200e68
+    target: 0x200e6a
+
+  # set fuse again maybe, because needed for df lock
+  - addr: 0xe0a196
+    action: SetConstant
+    target: R0
+    value: 0x7
+
+  # needed to run 0x1d command
+  - addr: 0x2028d0
+    action: SetConstant
+    target: R0
+    value: 0xffff0000
+
+  - addr: 0x2015aa
+    action: SetConstant
+    target: R9
+    value: 0x1
+
+
+
+    # Shorten the while true by one instruction to later set fuzzing start there
+  - addr: 0x200e64
+    action: Jump
+    source: 0x200e70
+    target: 0x200e62
+    exec_amount: 1
+
+    # jump to later set fuzzing start there
+  - addr: 0x200e66
+    action: Jump
+    source: 0x200e70
+    target: 0x200e74
+    exec_amount: 1
+    delay: 2
+
+  # set mbox_low
+  - addr: 0x200b50
+    action: WriteMemory
+    target: 0x3010574
+    value: "0xd0000000"
+    exec_amount: 2
+  # set mbox_high
+  - addr: 0x200b52
+    action: WriteMemory
+    target: 0x3010578
+    value: "0x00000000"
+    exec_amount: 2
+
+  # set mbox_cmd
+  - addr: 0x200b4c
+    action: WriteMemory
+    target: 0x3010570
+    value: "0x00000200"
+    exec_amount: 1
+  # set cmd memory
+  - addr: 0x200c90
+    action: WriteMemory
+    target: 0x202860
+    value: "0x100100000000000000000020000000000000f0ffffffffff0040002000000000002000000000000010100020000000000100000001000000ff000000a5000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000200000000000c0002000000000"
+    exec_amount: 1
+  # set cmd pointer
+  - addr: 0x200c92
+    action: SetConstant
+    target: R0
+    value: 0x202860
+    exec_amount: 1
+
+
+
+  # set 2nd mbox_cmd
+  - addr: 0x200b56
+    action: WriteMemory
+    target: 0x3010570
+    value: "0x00001b00"
+    exec_amount: 1
+    delay: 2
+
+
+  # Debug error state
+  - addr: 0xa9a4
+    action: LogRegister
+    target: LR
+  - addr: 0x7272
+    action: LogRegister
+    target: R1
+  - addr: 0xfca
+    action: LogRegister
+    target: R5
+  - addr: 0x907a
+    action: LogMemory
+    target: 0x3010570
+    size: 4
+  - addr: 0xfac
+    action: LogMemory
+    target: 0x3010570
+    size: 4
+
+#TODO: fix that if breakpoint is within code executed before harness, fuzzer will break
+crashes:
+  breakpoints:
+    - 0x00000ef6 # faulty instruction?
+  # - 0x201b46
+  mmap:
+    no_exec:
+    ccp_memcopy_addr: 0x0
+    forbidden_memcopies:
+    forbidden_writes:
+      - begin: 0x200000
+        end: 0x203660
+    x86:
+      start: 0xfffd00000000
+      end: 0xffffffffffff
+
+snapshot:
+  default: "SuperLazy"
+  on_crash: "HardReset"
+  periodically: "RustSnapshot"
+  period: 100000
