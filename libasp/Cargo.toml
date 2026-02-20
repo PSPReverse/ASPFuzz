@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-capstone = {version = "0.13.0", features = ["full"]}
+capstone = {version = "0.14.0", features = ["full"]}
 libafl = { workspace=true }
 libafl_bolts = { workspace=true }
 libafl_qemu = { workspace=true }

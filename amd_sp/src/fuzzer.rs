@@ -113,7 +113,7 @@ pub fn fuzz() -> Result<(), Error> {
         // Configure QEMU hook helper
         let dr_cov_module = DrCovModule::builder()
             .module_mapping(rangemap)
-            .filename(log_drcov_path)
+            .path(log_drcov_path)
             .filter(filter)
             .full_trace(false)
             .build();

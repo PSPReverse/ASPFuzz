@@ -54,6 +54,7 @@
           llvm.libclang
           libgit2
 
+          cmake
           meson
           ninja
           python_pkgs.libfdt
