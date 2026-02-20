@@ -1,0 +1,29 @@
+# Cross compiler
+export CROSS_CC := "arm-none-eabi-gcc"
+# Disable color codes in env_logger
+export RUST_LOG_STYLE := "never"
+
+# Build the fuzzer
+build:
+    cargo build --release
+
+# Run the fuzzer
+run *ARGS: build
+    RUST_LOG=aspfuzz_updates cargo run --release -- {{ARGS}}
+
+# Test/debug the fuzzer (single-core with debug logging)
+test *ARGS: build
+    RUST_LOG=debug cargo run --release -- {{ARGS}}
+
+# Performance measurements
+perf *ARGS: build
+    RUST_LOG=off cargo run --release --features performance -- {{ARGS}}
+
+# Clean up
+clean:
+    cargo clean
+    rm -rf runs/
+
+# Debug the fuzzer with lldb
+debug *ARGS: build
+    RUST_LOG=debug rust-lldb target/release/aspfuzz -- {{ARGS}}

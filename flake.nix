@@ -44,7 +44,7 @@
         # Things needed to build the software
         nativeBuildInputs = with pkgs; [
           rustToolchain
-          cargo-make
+          just
           gcc-arm-embedded
           git
           llvm.clang

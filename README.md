@@ -35,7 +35,7 @@ Alternatively you can install the following dependencies manually:
 - nettle (Ubuntu: `sudo apt install nettle-dev`)
 - [rust](https://www.rust-lang.org/tools/install)
 - [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
-- [cargo-make](https://github.com/sagiegurari/cargo-make)
+- [just](https://just.systems/)
 
 ## Run
 
@@ -52,18 +52,17 @@ Alternatively you can install the following dependencies manually:
    - Fuzz the on-chip bootloader for Ryzen Zen3: `yaml/ryzen_zen3_desktop_parse_asp_flash.yaml`
    - Fuzz the on-chip bootloader for Ryzen ZenTesla: `yaml/ryzen_zentesla_parse_asp_flash.yaml`
 3. Run the fuzzer
-   - `cargo make test -y {yaml_file_path}`
+   - `just test -y {yaml_file_path}`
      - single-core
      - debug to `runs/{start_data_time}/logs/run.log`
-   - `cargo make run -y {yaml_file_path}`
+   - `just run -y {yaml_file_path}`
      - single-core
      - no debug
-   - `cargo make run_fast -y {yaml_file_path}`
-     - multi-core (all possible cores)
+   - `just perf -y {yaml_file_path}`
+     - performance mode
      - no debug
-     - highly multithreaded
 4. More configuration options\
-  `cargo make run -h`
+  `just run -- -h`
 5. Stop the fuzzer
    - Single-core: `CTRL + a` -> `x`
    - Multi-core: `sudo kill -9 $(pidof aspfuzz)`
@@ -105,7 +104,7 @@ Alternatively you can install the following dependencies manually:
    - The inputs used for the fuzzing campaign can be found under `runs/{start_data_time}/inputs/`.
    - The LibAFL monitor log for the whole campaign is written to `runs/{start_data_time}/logs/libafl.log`.
    - A DrCov trace file is generate for each campaign as `runs/{start_data_time}/logs/drcov.log`.
-   - If the campaign was started with `cargo make test`, all debug output will be captured in `runs/{start_data_time}/logs/run.log`.
+   - If the campaign was started with `just test`, all debug output will be captured in `runs/{start_data_time}/logs/run.log`.
    - The yaml config file used for the campaign is stores as `runs/{start_data_time}/config.yaml`
 
 3. Analyze the output
