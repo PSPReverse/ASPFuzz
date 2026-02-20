@@ -38,7 +38,9 @@
           )
         ];
         pkgs = import nixpkgs {inherit overlays system;};
-        llvm = pkgs.llvmPackages_19;
+        # Must match rustc's LLVM version (rustc --version --verbose)
+        # libafl_qemu_build requires llvm-config >= rustc's LLVM for bindgen
+        llvm = pkgs.llvmPackages_22;
         python = pkgs.python3;
         python_pkgs = pkgs.python3Packages;
         # Things needed to build the software
@@ -60,7 +62,7 @@
           python_pkgs.libfdt
           python_pkgs.black
           python_pkgs.sphinx
-          python_pkgs.sphinx_rtd_theme
+          python_pkgs.sphinx-rtd-theme
           python
         ];
 
@@ -73,7 +75,7 @@
           libgcrypt
           llvm.libcxx
           pixman
-          xorg.libX11
+          libx11
         ];
       in
         with pkgs; {
