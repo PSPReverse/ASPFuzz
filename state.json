@@ -14,13 +14,16 @@
       "priority": "high",
       "created_by": "lptF",
       "created_at": "2026-10-04T21:32:29.831008237Z",
-      "updated_at": "2026-10-04T21:32:29.831008237Z"
+      "updated_at": "2026-10-04T21:32:35.253153107Z",
+      "labels": [
+        "toolchain"
+      ]
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-10-04T21:32:29.831008237Z",
+    "timestamp": "2026-10-04T21:32:35.253153107Z",
     "agent_id": "lptF",
-    "agent_seq": 1
+    "agent_seq": 2
   }
 }
