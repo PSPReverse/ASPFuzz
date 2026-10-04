@@ -4,7 +4,12 @@
   "display_id_map": {
     "aae4fc6a-4607-454d-b2bf-ac2a93350cc8": 1
   },
-  "locks": {},
+  "locks": {
+    "1": {
+      "agent_id": "lptF",
+      "claimed_at": "2026-10-04T21:32:43.153373650Z"
+    }
+  },
   "issues": {
     "aae4fc6a-4607-454d-b2bf-ac2a93350cc8": {
       "uuid": "aae4fc6a-4607-454d-b2bf-ac2a93350cc8",
@@ -22,8 +27,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-10-04T21:32:35.253153107Z",
+    "timestamp": "2026-10-04T21:32:43.153373650Z",
     "agent_id": "lptF",
-    "agent_seq": 2
+    "agent_seq": 3
   }
 }
